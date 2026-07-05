@@ -1,109 +1,67 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import express from 'express';
+import { createClient } from '@supabase/supabase-js';
+import axios from 'axios';
+
+const app = express();
+app.use(express.json());
 
 const supabase = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-async function getCoordinates(cityName: any) {
+// פונקציית העזר למפות (Geocoding)
+async function getCoordinates(cityName: string) {
   if (!cityName) return null;
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cityName)}&format=json&limit=1`;
   try {
-    const response = await fetch(url, { headers: { 'User-Agent': 'my-crawler-app' } });
-    const data = await response.json();
-    if (data && data.length > 0) {
-      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    const response = await axios.get(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cityName)}&format=json&limit=1`, {
+      headers: { 'User-Agent': 'KatchApp-Bot' }
+    });
+    if (response.data && response.data.length > 0) {
+      return { lat: parseFloat(response.data[0].lat), lng: parseFloat(response.data[0].lon) };
     }
   } catch (e) { console.error("Geocoding error:", e); }
   return null;
 }
 
-async function update_ads_search_metadata_fn(adId: string, parsedData: any) {
-  try {
-    // 1. הזרקת לוגיקת המיקום: אם חסר lat/lng, נסה לפענח מהעיר
-    let lat = parsedData.lat;
-    let lng = parsedData.lng;
+// פונקציית עדכון המודעות
+async function update_ads_search_metadata_fn(adId: number, parsedData: any) {
+  let lat = parsedData.lat;
+  let lng = parsedData.lng;
 
-    if (!lat || !lng) {
-      console.log(`אין מיקום למודעה ${adId}, מנסה לפענח עיר: ${parsedData.location}`);
-      const coords = await getCoordinates(parsedData.location);
-      if (coords) {
-        lat = coords.lat;
-        lng = coords.lng;
-      }
-    }
-
-    // סינון סופי: אם גם אחרי הפיענוח אין מיקום - תעצור
-    if (!lat || !lng) {
-      console.warn(`מדלג על מודעה ${adId}: לא ניתן היה למצוא מיקום`);
-      return; 
-    }
-
-    // 2. מיפוי קטגוריות
-    const categoryMapping: Record<string, string> = {
-      "Learning & Study": "learning",
-      "Local Jobs & Gigs": "jobs",
-      "Local Services": "services",
-      "General": "general",
-      "Neighborhood Hub": "neighborhood",
-      "Shopping & Deals": "shopping",
-      "Sports": "sports",
-      "Family": "family"
-    };
-
-    const finalCategory = categoryMapping[parsedData.category] || "general";
-
-    // 3. הזרקה ל-Supabase
-     const { error } = await supabase
-      .from("ads")
-      .update({
-        title: parsedData.summary || "ללא כותרת",
-        description: parsedData.summary || "",
-        category: finalCategory,
-        lat_num: lat,
-        lng_num: lng,
-        search_metadata: JSON.stringify({ 
-          tags: parsedData.tags || [], 
-          summary: parsedData.summary || "" 
-        })
-      })
-      .eq('id', adId);
-
-    if (error) throw error;
-    console.log(`Successfully updated ads table for ID: ${adId} (Lat: ${lat}, Lng: ${lng})`);
-    
-  } catch (err) {
-    console.error(`Error updating ads table for ID ${adId}:`, err instanceof Error ? err.message : err);
+  if (!lat || !lng) {
+    const coords = await getCoordinates(parsedData.location);
+    if (coords) { lat = coords.lat; lng = coords.lng; }
   }
+
+  const categoryMapping: Record<string, string> = {
+    "Coffee/Food": "coffee_food",
+    "Sport/Outdoors": "sport_outdoors",
+    "Work/Study": "work_study",
+    "Parties/Big Events": "parties_events",
+    "General/Other": "general_other"
+  };
+
+  const finalCategory = categoryMapping[parsedData.category] || "general_other";
+
+  await supabase.from("ads").update({
+    title: parsedData.summary || "ללא כותרת",
+    category: finalCategory,
+    lat_num: lat,
+    lng_num: lng,
+    search_metadata: JSON.stringify({ tags: parsedData.tags || [], summary: parsedData.summary || "" })
+  }).eq('id', adId);
 }
 
-// המעטפת הכירורגית שמפעילה את הפונקציה שלך
-serve(async (req) => {
-  try {
-    const body = await req.json();
-    if (body.test === "run_now") {
-    console.log("Starting Telegram crawl...");
-    
-    // שליחת בקשה ל-Telegram API כדי לקבל הודעות מהערוץ/קבוצה
-    const telegramUrl = `https://api.telegram.org/bot${Deno.env.get("TELEGRAM_BOT_TOKEN")}/getUpdates`;
-    
-    const response = await fetch(telegramUrl);
-    const data = await response.json();
-    
-    console.log("Telegram data:", data); // זה יופיע בלוגים שלנו!
+// נתיב לבדיקת "ערנות" הבוט
+app.get('/', (req, res) => res.send('Bot is active!'));
 
-    return new Response(JSON.stringify({ 
-      message: "Crawl executed", 
-      updates_count: data.result?.length || 0 
-    }), {
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
-await update_ads_search_metadata_fn(Number(body.adId), body.parsedData);
-    return new Response(JSON.stringify({ message: "Success" }), { status: 200 });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: "Invalid request" }), { status: 400 });
-  }
+// נתיב לעדכון מודעה (כמו ה-Edge Function)
+app.post('/update-ad', async (req, res) => {
+  const { adId, parsedData } = req.body;
+  await update_ads_search_metadata_fn(Number(adId), parsedData);
+  res.status(200).send("Success");
 });
+
+const port = process.env.PORT || 3000;
+app.listen(port, () => console.log(`Server running on port ${port}`));
