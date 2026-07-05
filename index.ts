@@ -1,17 +1,18 @@
-import express from 'express';
-import { createClient } from '@supabase/supabase-js';
-import axios from 'axios';
+const express = require('express');
+const { createClient } = require('@supabase/supabase-js');
+const axios = require('axios');
 
 const app = express();
 app.use(express.json());
 
+// הגדרת חיבור ל-Supabase
 const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// פונקציית העזר למפות (Geocoding)
-async function getCoordinates(cityName: string) {
+// פונקציית עזר למפות (Geocoding)
+async function getCoordinates(cityName) {
   if (!cityName) return null;
   try {
     const response = await axios.get(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cityName)}&format=json&limit=1`, {
@@ -25,41 +26,56 @@ async function getCoordinates(cityName: string) {
 }
 
 // פונקציית עדכון המודעות
-async function update_ads_search_metadata_fn(adId: number, parsedData: any) {
+async function update_ads_search_metadata_fn(adId, parsedData) {
   let lat = parsedData.lat;
   let lng = parsedData.lng;
 
   if (!lat || !lng) {
     const coords = await getCoordinates(parsedData.location);
-    if (coords) { lat = coords.lat; lng = coords.lng; }
+    if (coords) { 
+        lat = coords.lat; 
+        lng = coords.lng; 
+    }
   }
 
-  const categoryMapping: Record<string, string> = {
-    "Coffee/Food": "coffee_food",
-    "Sport/Outdoors": "sport_outdoors",
-    "Work/Study": "work_study",
-    "Parties/Big Events": "parties_events",
-    "General/Other": "general_other"
+  // מיפוי קטגוריות לפי שמות האייקונים ב-Bucket
+  const categoryMapping = {
+    "Family": "Family&Parents",
+    "General": "General",
+    "Learning & Study": "Learning&Study",
+    "Local Jobs & Gigs": "Local Jobs & Gigs",
+    "Local Services": "Local Services",
+    "Neighborhood Hub": "Nighborhood Hub",
+    "Shopping & Deals": "Shopping",
+    "Sports": "Sports"
   };
 
-  const finalCategory = categoryMapping[parsedData.category] || "general_other";
+  const finalCategory = categoryMapping[parsedData.category] || "General";
 
-  await supabase.from("ads").update({
-    title: parsedData.summary || "ללא כותרת",
-    category: finalCategory,
-    lat_num: lat,
-    lng_num: lng,
-    search_metadata: JSON.stringify({ tags: parsedData.tags || [], summary: parsedData.summary || "" })
-  }).eq('id', adId);
+  const { error } = await supabase
+    .from("ads")
+    .update({
+      title: parsedData.summary || "ללא כותרת",
+      category: finalCategory,
+      lat_num: lat,
+      lng_num: lng,
+      search_metadata: JSON.stringify({ 
+        tags: parsedData.tags || [], 
+        summary: parsedData.summary || "" 
+      })
+    })
+    .eq('id', adId);
+
+    if (error) console.error("Supabase update error:", error);
 }
 
 // נתיב לבדיקת "ערנות" הבוט
 app.get('/', (req, res) => res.send('Bot is active!'));
 
-// נתיב לעדכון מודעה (כמו ה-Edge Function)
+// נתיב לקבלת נתונים מהבוט/ממשק
 app.post('/update-ad', async (req, res) => {
   const { adId, parsedData } = req.body;
-  await update_ads_search_metadata_fn(Number(adId), parsedData);
+  await update_ads_search_metadata_fn(adId, parsedData);
   res.status(200).send("Success");
 });
 
