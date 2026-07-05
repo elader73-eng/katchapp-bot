@@ -38,7 +38,7 @@ async function update_ads_search_metadata_fn(adId, parsedData) {
     }
   }
 
-  // מיפוי קטגוריות לפי שמות האייקונים ב-Bucket
+  // מיפוי קטגוריות לפי שמות האייקונים ב-Bucket שלך
   const categoryMapping = {
     "Family": "Family&Parents",
     "General": "General",
