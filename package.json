@@ -1,0 +1,14 @@
+{
+  "name": "katchapp-bot",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "ts-node index.ts"
+  },
+  "dependencies": {
+    "node-telegram-bot-api": "^0.66.0",
+    "@supabase/supabase-js": "^2.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.0.0"
+  }
+}
