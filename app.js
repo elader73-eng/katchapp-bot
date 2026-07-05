@@ -14,9 +14,10 @@ const supabase = createClient(
 
 // --- תוספת כירורגית: אתחול יציב יותר ---
 const whatsappClient = new Client({
-    authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }), // שמירה קבועה של החיבור
-    puppeteer: { 
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] 
+    authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
+    puppeteer: {
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH, // שימוש במשתנה שהגדרנו
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
     }
 });
 
