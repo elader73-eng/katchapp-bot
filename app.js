@@ -16,7 +16,6 @@ const supabase = createClient(
 const whatsappClient = new Client({
     authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
     puppeteer: {
-     executablePath: '/usr/bin/google-chrome-stable', // שימוש במשתנה שהגדרנו
         args: ['--no-sandbox', '--disable-setuid-sandbox']
     }
 });
