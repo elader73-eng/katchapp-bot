@@ -1,4 +1,3 @@
-
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const axios = require('axios');
@@ -13,11 +12,13 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// הגדרת הלקוח עם הגדרות תואמות ל-Render
+// הגדרה יציבה ל-Render
 const whatsappClient = new Client({
     authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
     puppeteer: {
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        headless: true,
+        executablePath: '/usr/bin/google-chrome', // שינוי חשוב לסביבת שרת
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     },
     webVersionCache: {
         type: 'remote',
@@ -25,20 +26,14 @@ const whatsappClient = new Client({
     }
 });
 
-// החלק הקריטי: טיפול בחיבור
-whatsappClient.on('qr', async (qr) => {
+whatsappClient.on('qr', (qr) => {
     console.log('--- QR RECEIVED ---');
     qrcode.generate(qr, { small: true });
-    
-    // במידה והספריה מאפשרת, זה ינסה להוציא קוד התחברות
-    console.log('אם הסריקה נכשלת: השתמש באופציית "קשר באמצעות מספר טלפון" בוואטסאפ');
+    console.log('סרוק את הקוד או השתמש ב-"קשר באמצעות מספר טלפון" בוואטסאפ');
 });
 
-whatsappClient.on('ready', () => {
-    console.log('WhatsApp Client is ready!');
-});
+whatsappClient.on('ready', () => console.log('WhatsApp Client is ready!'));
 
-// התאוששות מניתוקים
 whatsappClient.on('disconnected', (reason) => {
     console.log('WhatsApp Client disconnected, re-initializing...', reason);
     whatsappClient.initialize();
@@ -67,30 +62,22 @@ async function update_ads_search_metadata_fn(adId, parsedData) {
   }
 
   const categoryMapping = {
-    "Family": "Family&Parents",
-    "General": "General",
-    "Learning & Study": "Learning&Study",
-    "Local Jobs & Gigs": "Local Jobs & Gigs",
-    "Local Services": "Local Services",
-    "Neighborhood Hub": "Nighborhood Hub",
-    "Shopping & Deals": "Shopping",
-    "Sports": "Sports"
+    "Family": "Family&Parents", "General": "General", "Learning & Study": "Learning&Study",
+    "Local Jobs & Gigs": "Local Jobs & Gigs", "Local Services": "Local Services",
+    "Neighborhood Hub": "Nighborhood Hub", "Shopping & Deals": "Shopping", "Sports": "Sports"
   };
 
   const finalCategory = categoryMapping[parsedData.category] || "General";
 
-  const { error } = await supabase
-    .from("ads")
-    .update({
+  const { error } = await supabase.from("ads").update({
       title: parsedData.summary || "ללא כותרת",
       category: finalCategory,
       lat_num: lat,
       lng_num: lng,
       search_metadata: JSON.stringify({ tags: parsedData.tags || [], summary: parsedData.summary || "" })
-    })
-    .eq('id', adId);
+  }).eq('id', adId);
 
-    if (error) console.error("Supabase update error:", error);
+  if (error) console.error("Supabase update error:", error);
 }
 
 app.get('/', (req, res) => res.send('Bot is active!'));
@@ -103,13 +90,11 @@ app.post('/update-ad', async (req, res) => {
 
 whatsappClient.on('message', async msg => {
     const chat = await msg.getChat();
-    if (chat.isGroup) {
-        console.log(`New message in ${chat.name}: ${msg.body}`);
-    }
+    if (chat.isGroup) console.log(`New message in ${chat.name}: ${msg.body}`);
 });
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
-    whatsappClient.initialize();
+    whatsappClient.initialize().catch(err => console.error("Failed to initialize:", err));
 });
