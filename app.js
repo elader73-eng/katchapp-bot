@@ -1,24 +1,18 @@
-const express = require('express');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
-
+const express = require('express');
 const app = express();
-const whatsappClient = new Client({
-    authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
+
+const client = new Client({
+    authStrategy: new LocalAuth(),
     puppeteer: {
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
     }
 });
 
-whatsappClient.on('qr', (qr) => {
-    console.log('--- QR RECEIVED ---');
-    qrcode.generate(qr, { small: true });
-});
+client.on('qr', (qr) => qrcode.generate(qr, { small: true }));
+client.on('ready', () => console.log('Client is ready!'));
 
-whatsappClient.on('ready', () => console.log('WhatsApp Client is ready!'));
-
-whatsappClient.initialize().catch(err => console.error("Error:", err));
-
-app.get('/', (req, res) => res.send('Bot is active!'));
+client.initialize();
 app.listen(process.env.PORT || 3000);
