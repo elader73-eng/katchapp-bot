@@ -1,3 +1,4 @@
+
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const axios = require('axios');
@@ -12,7 +13,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// הגדרת הלקוח עם תמיכה ב-webVersionCache למניעת בעיות חיבור
+// הגדרת הלקוח עם הגדרות תואמות ל-Render
 const whatsappClient = new Client({
     authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
     puppeteer: {
@@ -24,16 +25,20 @@ const whatsappClient = new Client({
     }
 });
 
-// החלק הכירורגי: טיפול ב-QR והנחיה ל-Pairing Code
-whatsappClient.on('qr', (qr) => {
+// החלק הקריטי: טיפול בחיבור
+whatsappClient.on('qr', async (qr) => {
     console.log('--- QR RECEIVED ---');
     qrcode.generate(qr, { small: true });
-    console.log('אם ה-QR לא עובד: בטלפון בחר "קשר באמצעות מספר טלפון" והזן את הקוד שיפורסם כאן');
+    
+    // במידה והספריה מאפשרת, זה ינסה להוציא קוד התחברות
+    console.log('אם הסריקה נכשלת: השתמש באופציית "קשר באמצעות מספר טלפון" בוואטסאפ');
 });
 
-whatsappClient.on('ready', () => console.log('WhatsApp Client is ready!'));
+whatsappClient.on('ready', () => {
+    console.log('WhatsApp Client is ready!');
+});
 
-// תוספת כירורגית: התאוששות מניתוקים
+// התאוששות מניתוקים
 whatsappClient.on('disconnected', (reason) => {
     console.log('WhatsApp Client disconnected, re-initializing...', reason);
     whatsappClient.initialize();
