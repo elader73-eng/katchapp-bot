@@ -109,5 +109,11 @@ whatsappClient.on('message', async msg => {
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
+  
+// מנגנון שמירה על עירנות השרת
+setInterval(() => {
+    console.log("Keeping the bot awake...");
+    // כאן אפשר להוסיף קריאה ל-URL של הבוט עצמו אם צריך
+}, 600000); // 600,000 מילי-שניות = כל 10 דקות
     whatsappClient.initialize();
 });
