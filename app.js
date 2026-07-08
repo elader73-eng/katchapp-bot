@@ -12,17 +12,25 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// --- תוספת כירורגית: אתחול יציב יותר ---
 const whatsappClient = new Client({
     authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
     puppeteer: {
         args: ['--no-sandbox', '--disable-setuid-sandbox']
+    },
+    // הוספת שורות אלו מאלצת את הבוט להשתמש בחיבור מודרני:
+    webVersionCache: {
+        type: 'remote',
+        remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html',
     }
 });
 
+
+
 whatsappClient.on('qr', (qr) => {
-    console.log('QR Code generated: ' + qr);
+    console.log('QR RECEIVED - הסריקה הזו היא הדרך היחידה לחבר את הבוט');
+    qrcode.generate(qr, { small: true });
 });
+
 
 whatsappClient.on('ready', () => console.log('WhatsApp Client is ready!'));
 
