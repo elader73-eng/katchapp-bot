@@ -20,11 +20,6 @@ const whatsappClient = new Client({
     }
 });
 
-    webVersionCache: {
-        type: 'remote',
-        remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html',
-    }
-});
 
 whatsappClient.on('qr', (qr) => {
     console.log('QR RECEIVED - הסריקה הזו היא הדרך היחידה לחבר את הבוט');
