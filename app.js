@@ -17,7 +17,7 @@ const whatsappClient = new Client({
     authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
     puppeteer: {
         headless: true,
-        executablePath: '/usr/bin/google-chrome', // שינוי חשוב לסביבת שרת
+        // התיקון הקריטי: הורדנו את ה-executablePath הקשיח כדי ש-Puppeteer ישתמש בדפדפן המקומי שלו
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     },
     webVersionCache: {
