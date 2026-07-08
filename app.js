@@ -12,35 +12,34 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// הגדרת הלקוח עם תמיכה ב-webVersionCache למניעת בעיות חיבור
 const whatsappClient = new Client({
     authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
     puppeteer: {
         args: ['--no-sandbox', '--disable-setuid-sandbox']
     },
-    // הוספת שורות אלו מאלצת את הבוט להשתמש בחיבור מודרני:
     webVersionCache: {
         type: 'remote',
         remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html',
     }
 });
 
-
-
+// החלק הכירורגי: טיפול ב-QR והנחיה ל-Pairing Code
 whatsappClient.on('qr', (qr) => {
-    console.log('QR RECEIVED - הסריקה הזו היא הדרך היחידה לחבר את הבוט');
+    console.log('--- QR RECEIVED ---');
     qrcode.generate(qr, { small: true });
+    console.log('אם ה-QR לא עובד: בטלפון בחר "קשר באמצעות מספר טלפון" והזן את הקוד שיפורסם כאן');
 });
-
 
 whatsappClient.on('ready', () => console.log('WhatsApp Client is ready!'));
 
-// --- תוספת כירורגית: התאוששות מניתוקים ---
+// תוספת כירורגית: התאוששות מניתוקים
 whatsappClient.on('disconnected', (reason) => {
     console.log('WhatsApp Client disconnected, re-initializing...', reason);
     whatsappClient.initialize();
 });
 
-// --- פונקציות העזר שלך נשארות זהות ---
+// פונקציות העזר
 async function getCoordinates(cityName) {
   if (!cityName) return null;
   try {
