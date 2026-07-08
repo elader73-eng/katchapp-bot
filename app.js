@@ -1,12 +1,12 @@
+const express = require('express');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 
+const app = express();
 const whatsappClient = new Client({
     authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
     puppeteer: {
         headless: true,
-        // זה חייב להיות הנתיב הזה בדיוק עבור ה-Dockerfile שסיפקתי
-        executablePath: '/usr/bin/google-chrome', 
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     }
 });
@@ -16,4 +16,9 @@ whatsappClient.on('qr', (qr) => {
     qrcode.generate(qr, { small: true });
 });
 
-whatsappClient.initialize();
+whatsappClient.on('ready', () => console.log('WhatsApp Client is ready!'));
+
+whatsappClient.initialize().catch(err => console.error("Error:", err));
+
+app.get('/', (req, res) => res.send('Bot is active!'));
+app.listen(process.env.PORT || 3000);
