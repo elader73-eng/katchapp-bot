@@ -26,8 +26,18 @@ const whatsappClient = new Client({
 
 whatsappClient.on('qr', (qr) => {
     console.log('QR RECEIVED - הסריקה הזו היא הדרך היחידה לחבר את הבוט');
+    
+    // יצירת קישור ישיר לתמונה נקייה של ה-QR קוד
+    const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qr)}`;
+    
+    console.log('\n============================================================');
+    console.log('לחץ על הקישור הבא כדי לפתוח תמונת QR ברורה לסריקה:');
+    console.log(qrImageUrl);
+    console.log('============================================================\n');
+
     qrcode.generate(qr, { small: true });
 });
+
 
 whatsappClient.on('ready', () => console.log('WhatsApp Client is ready!'));
 
